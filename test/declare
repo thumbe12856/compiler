@@ -1,0 +1,9 @@
+procedure EMPTY is
+	declare
+		XX : integer;
+	    YY : integer; 
+    	ZZ : integer;
+    begin
+    end;
+//end
+

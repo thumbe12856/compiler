@@ -1,0 +1,15 @@
+procedure EMPTY is                                                                           
+	declare
+		XX : integer;
+		YY : integer;    
+		ZZ : integer;    
+	begin
+		if N < 0 then
+			write -1;
+			exit;
+		else 
+			write 10;
+			exit;
+		end if;
+	end;                                                                                                                                             
+//end                                                                                                                                                
