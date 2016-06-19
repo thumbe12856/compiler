@@ -4,9 +4,11 @@ procedure EMPTY is
 		YY : integer;    
 		ZZ : integer;    
 	begin
-		if N < 0 then
-			write -1;
-			exit;
+		if N < 1 then
+			if N < 0 then
+				write -1;
+				exit;
+			end if;
 		else 
 			write 10;
 			exit;
