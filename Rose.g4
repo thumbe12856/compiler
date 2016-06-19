@@ -35,10 +35,12 @@ program :
 		{ System.out.println(".data"); }
 	DECLARE
 	variables
-		{ System.out.println(".main"); }
+		{ System.out.println(".text"); 
+		  System.out.println("main:"); 
+		}
 	BEGIN
 	statements
-		{ System.out.println("exit"); }
+		{ System.out.println("exit:"); }
 	END
 	SEMI;
 
@@ -95,50 +97,87 @@ assignment_statement : Identifier ':=' temp2 = arith_expression ';'
 	}
 ;
 
+getEtrueFalseNextLabel [int EnextSwit, int EbeginSwit] returns [int Etrue, int Efalse, int Enext, int Ebegin]:
+	{
+		$Etrue = newLabel();
+		$Efalse = newLabel();
+		$Enext = -1;
+		$Ebegin = -1;
+		if($EnextSwit == 1) $Enext = newLabel();
+		else if($EbeginSwit == 1) $Ebegin = newLabel();
+	}
+;
 
 if_statement : 
 	'if'
+	LABEL = getEtrueFalseNextLabel[0, 0]
+	bool_expression[$LABEL.Etrue, $LABEL.Efalse, $LABEL.Enext] 'then' 
 		{
-			int Etrue = newLabel();
-			int Efalse = newLabel();
-		}
-	bool_expression 'then' 
-		{
-			System.out.println("\nL" + Etrue + ":");
+			System.out.println("\nL" + $LABEL.Etrue + ":");
 		}
 	statements 
 		{
-			System.out.println("\nL" + Efalse + ":");
+			System.out.println("\nL" + $LABEL.Efalse + ":");
 		}
 	'end' 'if' ';'
 
 	| 'if' 
+	LABEL = getEtrueFalseNextLabel[1, 0]
+	bool_expression[$LABEL.Etrue, $LABEL.Efalse, $LABEL.Enext] 'then' 
 		{
-			int Etrue = newLabel();
-			int Efalse = newLabel();
-			int Enext = newLabel();
-		}
-	
-	bool_expression 'then' 
-		{
-			System.out.println("\nL" + Etrue + ":");
+			System.out.println("\nL" + $LABEL.Etrue + ":");
 		}
 	
 	statements 'else' 
 		{
-			System.out.println("\nj L" + Enext + ":");
-			System.out.println("\nL" + Efalse + ":");
+  			System.out.println("\nj L" + $LABEL.Enext + ":");
+			System.out.println("\nL" + $LABEL.Efalse + ":");
 		}
 	
 	statements 
 	'end' 'if' ';'
 		{
-			System.out.println("\nL" + Enext + ":");
+			System.out.println("\nL" + $LABEL.Enext + ":");
 		}
 ;
 
 for_statement :
-'for' Identifier 'in' arith_expression '..' arith_expression 'loop' statements 'end' 'loop' ';'
+	'for' 
+	LABEL = getEtrueFalseNextLabel[0, 1]
+	Identifier 'in' From=arith_expression '..' To=arith_expression 
+		{
+			//if(debug)	System.out.println("------From.place:" + $From.Eplace + ", To.place:" + $To.Eplace);
+			
+			System.out.println("\nL" + $LABEL.Ebegin + ":");
+			
+			if(debug)	System.out.println("#---for assign");
+			int tempp = getReg();
+			System.out.println("la\t\$t" + tempp + ", " + $Identifier.text);
+			System.out.println("sw\t\$t" + $From.Eplace + ", 0(\$t" + tempp + ")");
+			putReg();
+
+			System.out.println("ble \$t" + $From.Eplace + ", \$t" + $To.Eplace + ", L" + $LABEL.Etrue);
+			System.out.println("j L" + $LABEL.Efalse);
+		}
+	
+	'loop'
+		{
+			System.out.println("\nL" + $LABEL.Etrue + ":");	
+		}
+	statements 
+		{
+			if(debug)	System.out.println("#---for i++");
+			int temp = getReg();
+			System.out.println("li \$t" + temp + ", 1");
+			System.out.println("add \$t" + $From.Eplace + ", \$t" + $From.Eplace + ", \$t" + temp);
+			putReg();
+
+			System.out.println("j L" + $LABEL.Ebegin);
+		}
+	'end' 'loop' ';'
+		{
+			System.out.println("\nL" + $LABEL.Efalse + ":");
+		}
 ;
 
 exit_statement : 
@@ -170,26 +209,26 @@ write_statement : 'write' arith_expression ';'
 	}
 ;
 
-bool_expression: bool_term bool_expression2
+bool_expression[int Etrue, int Efalse, int Enext]: bool_term[$Etrue, $Efalse, $Enext] bool_expression2[$Etrue, $Efalse, $Enext]
 ;
-bool_expression2: '||' bool_term bool_expression2
+bool_expression2[int Etrue, int Efalse, int Enext]: '||' bool_term[$Etrue, $Efalse, $Enext] bool_expression2[$Etrue, $Efalse, $Enext]
 |
 ;
 
-bool_term:
-	bool_factor
-	bool_term2
+bool_term[int Etrue, int Efalse, int Enext]:
+	bool_factor[$Etrue, $Efalse, $Enext]
+	bool_term2[$Etrue, $Efalse, $Enext]
 ;
-bool_term2: '&&' bool_factor bool_term2
+bool_term2[int Etrue, int Efalse, int Enext]: '&&' bool_factor[$Etrue, $Efalse, $Enext] bool_term2[$Etrue, $Efalse, $Enext]
 |
 ;
 
-bool_factor:
-	'!' bool_primary
-	| bool_primary
+bool_factor[int Etrue, int Efalse, int Enext]:
+	'!' bool_primary[$Etrue, $Efalse, $Enext]
+	| bool_primary[$Etrue, $Efalse, $Enext]
 ;
 
-bool_primary: 
+bool_primary[int Etrue, int Efalse, int Enext]: 
 
 	E1 = arith_expression 
 	{
@@ -203,19 +242,19 @@ bool_primary:
 		//if(debug) System.out.println("------bool E2.place:" + $E2.Eplace);
 
 		if($relation_op.op == 0) {
-			System.out.println("beq \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("beq \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		} else if($relation_op.op == 1) {
-			System.out.println("bne \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("bne \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		} else if($relation_op.op == 2) {
-			System.out.println("bgt \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("bgt \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		} else if($relation_op.op == 3) {
-			System.out.println("bge \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("bge \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		} else if($relation_op.op == 4) {
-			System.out.println("blt \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("blt \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		} else if($relation_op.op == 5) {
-			System.out.println("ble \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + (label-2));
+			System.out.println("ble \$t" + $E1.Eplace + ", \$t" + $E2.Eplace + ", L" + $Etrue);
 		}
-		System.out.println("j L" + (label-1));
+		System.out.println("j L" + Efalse);
 	}
 ;
 
